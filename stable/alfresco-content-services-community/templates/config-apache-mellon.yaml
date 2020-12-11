@@ -36,6 +36,7 @@ data:
 
     <Location / >
         MellonEnable "off"
+        MellonSignatureMethod rsa-sha1
         MellonEndpointPath /mellon/
         MellonSPMetadataFile /etc/httpd/saml2/mellon_metadata.xml
         MellonSPPrivateKeyFile /etc/httpd/saml2/mellon.key
@@ -51,27 +52,32 @@ data:
 
         RequestHeader set secure_key "secure"
     </Location>
+
     {{ $contentservice :=  include "content-services.shortname" . }}
     {{ $defaultBakend := printf "http://%s" $contentservice}}
+
     {{ with .Values.mellon.protected_routes }}
     {{ range .}}
-    <Location {{ .path }} >
+    <Location {{ .path | quote }} >
         AuthType Mellon
         MellonEnable auth
         Require valid-user
         ProxyPass  {{ printf "%s%s/%s" (.backend | default $defaultBakend | trimSuffix "/") .suffix (.path | trimPrefix "/" ) | quote }}
         ProxyPassReverse  {{ printf "%s%s/%s" (.backend | default $defaultBakend | trimSuffix "/") .suffix (.path | trimPrefix "/" ) | quote }}
+
     </Location>
     {{ end -}}
     {{ end }}
+
     {{ with .Values.mellon.allowed_routes }}
     {{ range .}}
-    <Location {{ .path }} >
+    <Location {{ .path | quote }} >
+        MellonEnable "off"
+        Order Deny,Allow
+        Allow from all
+        Satisfy Any
         ProxyPass  {{ printf "%s%s/%s" (.backend | default $defaultBakend | trimSuffix "/") .suffix (.path | trimPrefix "/" ) | quote }}
         ProxyPassReverse  {{ printf "%s%s/%s" (.backend | default $defaultBakend | trimSuffix "/") .suffix (.path | trimPrefix "/" ) | quote }}
-        Order deny,allow
-        Allow from All
-        Satisfy Any
     </Location>
     {{ end -}}
     {{ end }}
